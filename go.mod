@@ -3,7 +3,7 @@ module sllmbench
 go 1.20
 
 require (
-	git.fractalqb.de/fractalqb/sllm/v2 v2.1.0
+	git.fractalqb.de/fractalqb/sllm/v2 v2.1.1
 	github.com/json-iterator/go v1.1.12
 )
 
