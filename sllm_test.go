@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
-	"git.fractalqb.de/fractalqb/sllm/v2"
+	"git.fractalqb.de/fractalqb/sllm/v3"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -42,33 +43,35 @@ func ExampleParse() {
 
 var (
 	sllmForm = "`service`: Sent `signal` to main `process` (`name`) on client request."
-	sllmArgs = sllm.Argv("???", "rsyslog", "SIGHUP", 1611, "rsyslogd")
+	sllmArgs = sllm.IdxArgsDefault("???", "rsyslog", "SIGHUP", 1611, "rsyslogd")
 )
 
-func BenchmarkSllmExpand(b *testing.B) {
+var result int
+
+func BenchmarkSllmAppend(b *testing.B) {
 	var buf []byte
 	for i := 0; i < b.N; i++ {
-		buf, _ = sllm.Expand(buf[:0], sllmForm, sllmArgs)
+		buf, _ = sllm.Append(buf[:0], sllmForm, sllmArgs)
 	}
-	_ = buf[1]
+	result = len(buf)
 }
 
 func BenchmarkSllmByteBuffer(b *testing.B) {
 	var buf bytes.Buffer
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		sllm.Bprint(&buf, sllmForm, sllmArgs)
-	}
-	_ = buf.Bytes()[1]
-}
-
-func BenchmarkSllmPrint(b *testing.B) {
-	var buf bytes.Buffer
-	for i := 0; i < b.N; i++ {
-		buf.Reset()
 		sllm.Fprint(&buf, sllmForm, sllmArgs)
 	}
-	_ = buf.Bytes()[1]
+	result = buf.Len()
+}
+
+func BenchmarkSllmStringBuilder(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < b.N; i++ {
+		sb.Reset()
+		sllm.Fprint(&sb, sllmForm, sllmArgs)
+	}
+	result = sb.Len()
 }
 
 type staticMsg struct {
@@ -101,7 +104,7 @@ func BenchmarkGoJSONDynamic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf, _ = json.Marshal(jsonDynamic)
 	}
-	_ = buf[1]
+	result = len(buf)
 }
 
 func BenchmarkGoJSONStatic(b *testing.B) {
@@ -109,7 +112,7 @@ func BenchmarkGoJSONStatic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf, _ = json.Marshal(jsonStatic)
 	}
-	_ = buf[1]
+	result = len(buf)
 }
 
 func BenchmarkJSONiterDynamic(b *testing.B) {
@@ -119,7 +122,7 @@ func BenchmarkJSONiterDynamic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf, _ = json.Marshal(jsonDynamic)
 	}
-	_ = buf[1]
+	result = len(buf)
 }
 
 func BenchmarkJSONiterStatic(b *testing.B) {
@@ -129,18 +132,21 @@ func BenchmarkJSONiterStatic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf, _ = json.Marshal(jsonStatic)
 	}
-	_ = buf[1]
+	result = len(buf)
 }
 
 func BenchmarkSllmParseDynamic(b *testing.B) {
-	var tmpl bytes.Buffer
+	var (
+		tmpl bytes.Buffer
+		m    map[string][]any
+	)
 	for i := 0; i < b.N; i++ {
-		sllm.ParseMap(
+		m, _ = sllm.ParseMap(
 			"`service:rsyslog`: Sent `signal:SIGHUP` to main `process:1611` (`name:rsyslogd`) on client request.",
 			&tmpl,
 		)
 	}
-	_ = tmpl.Bytes()[1]
+	result = len(m)
 }
 
 func BenchmarkGoJSONparseDynamic(b *testing.B) {
@@ -149,7 +155,7 @@ func BenchmarkGoJSONparseDynamic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		json.Unmarshal(msg, &data)
 	}
-	_ = len(data)
+	result = len(data)
 }
 
 func BenchmarkGoJSONparseStatic(b *testing.B) {
@@ -158,7 +164,7 @@ func BenchmarkGoJSONparseStatic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		json.Unmarshal(msg, &data)
 	}
-	_ = len(data.Msg)
+	result = len(data.Msg)
 }
 
 func BenchmarkGoJSONiterParseDynamic(b *testing.B) {
@@ -169,7 +175,7 @@ func BenchmarkGoJSONiterParseDynamic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		json.Unmarshal(msg, &data)
 	}
-	_ = len(data)
+	result = len(data)
 }
 
 func BenchmarkGoJSONiterParseStatic(b *testing.B) {
@@ -180,5 +186,5 @@ func BenchmarkGoJSONiterParseStatic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		json.Unmarshal(msg, &data)
 	}
-	_ = len(data.Msg)
+	result = len(data.Msg)
 }
